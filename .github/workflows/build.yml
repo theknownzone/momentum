@@ -49,3 +49,8 @@ jobs:
           name: Momentum 1.0.${{ github.run_number }}
           files: momentum-*.apk
           generate_release_notes: true
+          # Without these the action leaves the release as a draft, which is
+          # invisible to the public API the in-app updater reads.
+          draft: false
+          prerelease: false
+          make_latest: true
