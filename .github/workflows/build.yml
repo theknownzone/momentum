@@ -16,6 +16,10 @@ jobs:
       - name: Unpack project
         run: unzip -q momentum-project.zip
 
+      - name: Write signing key
+        run: |
+          echo "${{ secrets.MOMENTUM_KEYSTORE_B64 }}" | base64 -d > momentum/app/release.jks
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -29,6 +33,10 @@ jobs:
 
       - name: Build debug APK
         working-directory: momentum
+        env:
+          MOMENTUM_STORE_PASSWORD: ${{ secrets.MOMENTUM_STORE_PASSWORD }}
+          MOMENTUM_KEY_ALIAS: ${{ secrets.MOMENTUM_KEY_ALIAS }}
+          MOMENTUM_KEY_PASSWORD: ${{ secrets.MOMENTUM_KEY_PASSWORD }}
         run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Rename APK
@@ -40,8 +48,6 @@ jobs:
           name: momentum-apk
           path: momentum-*.apk
 
-      # Publishing a release is what makes the in-app updater work: release
-      # assets are public, Actions artifacts are not.
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
@@ -49,8 +55,6 @@ jobs:
           name: Momentum 1.0.${{ github.run_number }}
           files: momentum-*.apk
           generate_release_notes: true
-          # Without these the action leaves the release as a draft, which is
-          # invisible to the public API the in-app updater reads.
           draft: false
           prerelease: false
           make_latest: true
