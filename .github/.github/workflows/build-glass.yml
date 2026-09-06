@@ -1,0 +1,74 @@
+name: Build Glass APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'momentum-glass-ui.zip'
+      - '.github/workflows/build-glass.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unpack glass project
+        run: |
+          unzip -q momentum-glass-ui.zip
+          # zip root is momentum/momentum
+          if [ -d momentum/momentum ]; then
+            echo "ROOT=momentum/momentum" >> $GITHUB_ENV
+          elif [ -d momentum ]; then
+            echo "ROOT=momentum" >> $GITHUB_ENV
+          else
+            echo "Could not find project root" && ls -la && exit 1
+          fi
+
+      - name: Write signing key
+        run: |
+          echo "${{ secrets.MOMENTUM_KEYSTORE_B64 }}" | base64 -d > "$ROOT/app/release.jks" || true
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Build debug APK
+        working-directory: ${{ env.ROOT }}
+        env:
+          CHUTES_API_KEY: ${{ secrets.CHUTES_API_KEY }}
+          MOMENTUM_STORE_PASSWORD: ${{ secrets.MOMENTUM_STORE_PASSWORD }}
+          MOMENTUM_KEY_ALIAS: ${{ secrets.MOMENTUM_KEY_ALIAS }}
+          MOMENTUM_KEY_PASSWORD: ${{ secrets.MOMENTUM_KEY_PASSWORD }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp "$ROOT/app/build/outputs/apk/debug/"*.apk momentum-glass-${{ github.run_number }}.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: momentum-glass-apk
+          path: momentum-glass-*.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.9.${{ github.run_number }}
+          name: Momentum Glass 1.9.${{ github.run_number }}
+          files: momentum-glass-*.apk
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          make_latest: true
