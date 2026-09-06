@@ -2,10 +2,7 @@ name: Exam news
 
 on:
   schedule:
-    # 01:30 UTC = 07:00 IST. Boards publish in the morning and students open
-    # the app before class, so the feed is fresh by the time anyone looks.
     - cron: "30 1 * * *"
-  # So you can trigger it by hand from the Actions tab without waiting a day.
   workflow_dispatch:
 
 permissions:
@@ -21,11 +18,20 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Unpack project
+        run: unzip -qo momentum-doubt-solver.zip
+
+      - name: Seed feed from last commit
+        run: |
+          if [ -f exam-news.json ]; then
+            cp exam-news.json momentum/exam-news.json
+          fi
+
       - name: Fetch notices
-        # The script never raises on a board failure, so this step going green
-        # does not mean anything was found â€” it means nothing broke. Check the
-        # log for "added N" if you want to know.
-        run: python3 tools/fetch_news.py
+        run: python3 momentum/tools/fetch_news.py
+
+      - name: Publish feed to repo root
+        run: cp momentum/exam-news.json exam-news.json
 
       - name: Commit if changed
         run: |
