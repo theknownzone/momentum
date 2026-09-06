@@ -1,0 +1,40 @@
+name: Exam news
+
+on:
+  schedule:
+    # 01:30 UTC = 07:00 IST. Boards publish in the morning and students open
+    # the app before class, so the feed is fresh by the time anyone looks.
+    - cron: "30 1 * * *"
+  # So you can trigger it by hand from the Actions tab without waiting a day.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Fetch notices
+        # The script never raises on a board failure, so this step going green
+        # does not mean anything was found â€” it means nothing broke. Check the
+        # log for "added N" if you want to know.
+        run: python3 tools/fetch_news.py
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet exam-news.json; then
+            echo "no change"
+            exit 0
+          fi
+          git config user.name "momentum-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add exam-news.json
+          git commit -m "Exam news: $(date -u +%Y-%m-%d)"
+          git push
