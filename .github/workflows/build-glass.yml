@@ -1,0 +1,43 @@
+name: Build Glass APK
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack
+        run: |
+          unzip -q momentum-glass-ui.zip
+          if [ -d momentum/momentum/app ]; then
+            echo "ROOT=momentum/momentum" >> $GITHUB_ENV
+          else
+            echo "ROOT=momentum" >> $GITHUB_ENV
+          fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Build
+        working-directory: ${{ env.ROOT }}
+        env:
+          CHUTES_API_KEY: ${{ secrets.CHUTES_API_KEY }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+        run: gradle assembleDebug --no-daemon --stacktrace
+      - name: APK
+        run: cp "\( ROOT/app/build/outputs/apk/debug/"*.apk momentum-glass- \){{ github.run_number }}.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: momentum-glass-apk
+          path: momentum-glass-*.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: glass-${{ github.run_number }}
+          name: Momentum Glass ${{ github.run_number }}
+          files: momentum-glass-*.apk
+          make_latest: false
