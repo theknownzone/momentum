@@ -10,11 +10,14 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Unpack project
-        run: unzip -oq momentum-doubt-solver.zip
+        run: |
+          mkdir -p momentum
+          unzip -oq momentum-doubt-solver.zip -d momentum
 
       - name: Write signing key
         run: |
