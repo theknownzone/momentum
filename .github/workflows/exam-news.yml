@@ -19,7 +19,9 @@ jobs:
           python-version: "3.11"
 
       - name: Unpack project
-        run: unzip -qo momentum-doubt-solver.zip
+        run: |
+          mkdir -p momentum
+          unzip -oq momentum-doubt-solver.zip -d momentum
 
       - name: Seed feed from last commit
         run: |
